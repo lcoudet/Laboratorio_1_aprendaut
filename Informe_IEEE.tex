@@ -1,0 +1,124 @@
+%% Informe en formato IEEE (IEEEtran) - Tarea 1 Aprendizaje Automatico 2026
+%% Compilable en Overleaf con la plantilla IEEE Conference.
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage[spanish]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{url}
+\usepackage{multirow}
+
+\begin{document}
+
+\title{Predicción de resultados del fútbol uruguayo mediante aprendizaje supervisado}
+
+\author{\IEEEauthorblockN{Cecilia Waksman, Lucia Coudet}
+\IEEEauthorblockA{\textit{Aprendizaje Automático 2026} \\
+\textit{Facultad de Ingeniería, Udelar}\\
+Montevideo, Uruguay}}
+
+\maketitle
+
+\begin{abstract}
+Se aborda la predicción del resultado de partidos del fútbol uruguayo según gane el cuadro local, el visitante, o haya empate, a partir del conjunto de datos de David Schoch, restringido a los años 1932--2025. Se construye un pipeline reproducible de preprocesamiento y \emph{feature engineering} temporal y causal, y se
+implementan un árbol de decisión con el hiperparámetro
+\texttt{min\_info\_gain} y un clasificador Naive Bayes con m-estimación. Se
+comparan con Random Forest y Naive Bayes de scikit-learn y con un clasificador
+base informado. Respetando el orden temporal (entrenamiento hasta 2023,
+evaluación en 2024--2025 y validación cruzada con \texttt{TimeSeriesSplit}), el
+mejor \emph{macro}-F1 se obtiene con PONER MODELO por su capacidad de
+predecir PONER QUE PREDICE BIEN , mientras que PONER MODELO logra la mayor PONER QUE PREDICE BIEN.
+\end{abstract}
+
+\begin{IEEEkeywords}
+aprendizaje supervisado, fútbol, árbol de decisión, Naive Bayes, series temporales
+\end{IEEEkeywords}
+
+\section{Introducción}
+Predecir el resultado de un partido de fútbol es un problema clásico de
+clasificación multiclase con tres salidas: gana el local (\texttt{L}), hay empate
+(\texttt{E}) o gana el visitante (\texttt{V}). El fútbol posee una fuerte
+componente aleatoria, por lo que incluso modelos informados rara vez superan de
+forma amplia a heurísticas simples. En este trabajo se utiliza el conjunto de
+datos público de resultados de ligas de David Schoch~\cite{schoch}, restringido
+a los partidos del fútbol uruguayo entre 1932 y 2025 (15.207 registros).
+
+Los objetivos son: (i) construir un pipeline reproducible de preprocesamiento;
+(ii) implementar clasificadores supervisados, incluyendo dos algoritmos propios;
+y (iii) evaluar el desempeño con un protocolo temporal riguroso que evite fugas
+de información. 
+
+\section{Preprocesamiento}
+
+El preprocesamiento implementado consiste en la realización de la limpieza de los datos y de la transformación a un formato aceptable para los algorimos a utilizar.
+
+En lo que respecta a la limpieza, se verifica que las columnas no tienen errores y que no hay valores faltantes en ningun atributo. Asimismo, se eliminan filas duplicadas. También se verifica que los años de las fechas de los partidos se encuentran dentro del rango esperado: 1932-2025.
+
+En lo que respecta a la transformación de los datos, se definieron los tipos de atributos (numéricos, categóricos, fechas) y se eliminaron los atributos constantes que no aportan información al algoritmo (home country, away country, home code, away code, home continent, aeay continent, continent, level).
+
+Además, se crearon nuevos atributos a partir del atributo "fecha": año, mes, dia de la semana, y una variable indicatriz que indica si el partido fue realizado un fin de semana.
+
+También se crea el atributo "tasa de victorias local" y "tasa de victoria visitante" que indica la tasa de victorias del cuadro local y visitante respectivamente, considerando una ventana móvil de los últimos 5 años.
+
+Finalmente se crea el atributo objetivo \texttt{resultado} comparando los goles de
+local y visitante.
+
+Una vez creados los nuevos atributos definidos anteriormente, se realiza la transformación de los datos según tipo de columna:
+
+\begin{itemize}
+\item A las columans categóricas se le acplica one-hot encoding utilizando la función  OneHotEncoder de la libreria sklearn.preprocessing, para la implementación del árbol de decisión
+\item A las columnas numéricas se las mantiene tal como estan, ya que se verifica que ambas pertenecen al intervalo 0-1 (no es necesario escalar)
+\end{itemize}
+
+
+
+\section{Modelos Supervisados}
+\subsection{Árbol de decisión con \texttt{min\_info\_gain}}
+
+
+\subsection{Naive Bayes con parámetro $m$}
+
+\begin{equation}
+P(c) = \frac{N_c + m\,p}{N + m}, \qquad p = \frac{1}{K},
+\end{equation}
+
+donde $N_c$ es el número de ejemplos de la clase $c$, $N$ el total, $K$ el número
+de clases y $p$ el \emph{prior} uniforme. La verosimilitud de cada atributo se
+modela con una gaussiana por clase, con un pequeño suavizado de varianza.
+
+\subsection{Clasificador base}
+
+\section{Experimentación}
+\subsection{Protocolo temporal}
+
+Se entrena con los partidos hasta 2023 inclusive (14.721 ejemplos) y se evalúa
+sobre 2024--2025 (472 ejemplos). Por tratarse de datos temporales, la validación
+cruzada usa \texttt{TimeSeriesSplit} (cinco cortes), que entrena siempre con el
+pasado y valida con el futuro inmediato, sin barajar. Se fijan las semillas
+aleatorias para garantizar reproducibilidad.
+
+\subsection{Ajuste de hiperparámetros}
+
+
+\subsection{Resultados en evaluación}
+
+
+
+
+\section{Conclusiones}
+
+
+
+\begin{thebibliography}{1}
+\bibitem{schoch}
+D. Schoch, ``football-data,'' repositorio de datos de resultados de fútbol.
+[En línea]. Disponible: \url{https://github.com/schochastics/football-data/tree/master}
+\bibitem{sklearn}
+F. Pedregosa \emph{et al.}, ``Scikit-learn: Machine Learning in Python,''
+\emph{Journal of Machine Learning Research}, vol. 12, pp. 2825--2830, 2011.
+\end{thebibliography}
+
+\end{document}
