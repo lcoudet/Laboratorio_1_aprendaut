@@ -10,6 +10,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage{url}
 \usepackage{multirow}
+\usepackage{xcolor}
 
 \begin{document}
 
@@ -23,14 +24,10 @@ Montevideo, Uruguay}}
 \maketitle
 
 \begin{abstract}
-Se aborda la predicción del resultado de partidos del fútbol uruguayo según gane el cuadro local, el visitante, o haya empate, a partir del conjunto de datos de David Schoch, restringido a los años 1932--2025. Se construye un pipeline reproducible de preprocesamiento y \emph{feature engineering} temporal y causal, y se
+Se aborda la predicción del resultado de partidos del fútbol uruguayo según gane el cuadro local, el cuadro visitante, o haya empate, a partir del conjunto de datos de David Schoch, restringido a los años 1932--2025. Se construye un pipeline reproducible de preprocesamiento y \emph{feature engineering} temporal y causal. Se
 implementan un árbol de decisión con el hiperparámetro
-\texttt{min\_info\_gain} y un clasificador Naive Bayes con m-estimación. Se
-comparan con Random Forest y Naive Bayes de scikit-learn y con un clasificador
-base informado. Respetando el orden temporal (entrenamiento hasta 2023,
-evaluación en 2024--2025 y validación cruzada con \texttt{TimeSeriesSplit}), el
-mejor \emph{macro}-F1 se obtiene con PONER MODELO por su capacidad de
-predecir PONER QUE PREDICE BIEN , mientras que PONER MODELO logra la mayor PONER QUE PREDICE BIEN.
+\texttt{min\_info\_gain} y un clasificador Naive Bayes con m, tamaño equivalente de muestra. Asimismo, se implementa un clasificador base que prediga que gana el equipo que tiene mayor proporcion de partidos ganados en los últimos 10 años. Se
+comparan los resultados obtenidos con los de Random Forest y Naive Bayes de scikit-learn. Como resultado se obtiene que \textcolor{red}{PONER RESULTADOS PARTE 2}. Luego se realiza un ajuste con técnicas de validación cruzada y ajuste de hiperparámetros y se compara el desempeño de todos los clasificadores implementados. Teniendo en cuenta las medidas de precisión, recall, F1 por clase, accuracy y macro F1 se concluye que \textcolor{red}{PONER CONCLUSION ACA}
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -46,38 +43,67 @@ forma amplia a heurísticas simples. En este trabajo se utiliza el conjunto de
 datos público de resultados de ligas de David Schoch~\cite{schoch}, restringido
 a los partidos del fútbol uruguayo entre 1932 y 2025 (15.207 registros).
 
+Dicho conjunto contiene información sobre:
+\begin{itemize}
+	\item home: nombre del cuadro local
+	\item away: nombre del cuadro visitante
+	\item date: fecha del partido
+	\item gh: número de goles del cuadro local
+	\item ga: número de goles del cuadro visitante
+	\item full time: indica si el partido terminó a los 90 minutos, si hubo tiempo extra, o si huvo penales
+\end{itemize}
+
+Asimismo, el conjunto de datos contiene información sobre el identificador, país, código, y continente del cuadro local y del cuadro visitante, y el continente donde se realizó la competición. 
+
 Los objetivos son: (i) construir un pipeline reproducible de preprocesamiento;
 (ii) implementar clasificadores supervisados, incluyendo dos algoritmos propios;
-y (iii) evaluar el desempeño con un protocolo temporal riguroso que evite fugas
-de información. 
+y (iii) evaluar el desempeño con un protocolo temporal riguroso que evite fugas de información, implementando técnicas de validación cruzada. 
 
 \section{Preprocesamiento}
 
 El preprocesamiento implementado consiste en la realización de la limpieza de los datos y de la transformación a un formato aceptable para los algorimos a utilizar.
 
-En lo que respecta a la limpieza, se verifica que las columnas no tienen errores y que no hay valores faltantes en ningun atributo. Asimismo, se eliminan filas duplicadas. También se verifica que los años de las fechas de los partidos se encuentran dentro del rango esperado: 1932-2025.
+En lo que respecta a la limpieza, se verifica que las columnas no tienen errores y que no hay valores faltantes en ningún atributo. Asimismo, se eliminan filas duplicadas. También se verifica que los años de las fechas de los partidos se encuentran dentro del rango esperado: 1932-2025.
 
-En lo que respecta a la transformación de los datos, se definieron los tipos de atributos (numéricos, categóricos, fechas) y se eliminaron los atributos constantes que no aportan información al algoritmo (home country, away country, home code, away code, home continent, aeay continent, continent, level).
+En lo que respecta a la transformación de los datos, se definieron los tipos de atributos (numéricos, categóricos, fechas) y se eliminaron los atributos constantes que no aportan información al algoritmo (home country, away country, home code, away code, home continent, away continent, continent, level).
 
-Además, se crearon nuevos atributos a partir del atributo "fecha": año, mes, dia de la semana, y una variable indicatriz que indica si el partido fue realizado un fin de semana.
+Para evitar la fuga de información (\textit{data leakage}), se elimina el atributo \textit{full time} ya que contiene información que no es posible conocer antes de que el partido termine. Introduce una correlación con el resultado del tiempo regular, ya que para que exista tiempo extra o panales es necesario que el resultado en tiempo regular haya sido empate. Incluir esta variable le otorga al algoritmo una pista directa del desarrollo del encuentro que invalida su capacidad predictiva real para futuros partidos. En la medida que es información que no se tiene a priori, no sería posible utilizar el modelo para predecir nuevos resultados si se mantuviera en el conjunto de entrenamiento.
 
-También se crea el atributo "tasa de victorias local" y "tasa de victoria visitante" que indica la tasa de victorias del cuadro local y visitante respectivamente, considerando una ventana móvil de los últimos 5 años.
+En lo que respecta a la creación de nuevos atributos, se crearon a partir del atributo "fecha": el año, el mes, y el dia de la semana en el que se llevó a cabo el partido, y una variable indicatriz que indica si fue realizado un fin de semana.
 
-Finalmente se crea el atributo objetivo \texttt{resultado} comparando los goles de
-local y visitante.
+También se creó el atributo "tasa de victorias local" y "tasa de victoria visitante" que indica la tasa de victorias del cuadro local y visitante respectivamente, considerando una ventana móvil de los últimos 5 años, y la diferencia entre ellas.
 
-Una vez creados los nuevos atributos definidos anteriormente, se realiza la transformación de los datos según tipo de columna:
+Finalmente se crea el atributo objetivo \texttt{resultado} comparando los goles de local y visitante y siendo los posibles resultados: gana el cuadro local, gana el cuadro visitante, o hay empate.
+
+Una vez creados los nuevos atributos definidos anteriormente y realizada la limpieza mencionada, se realiza la transformación de los datos según tipo de columna:
 
 \begin{itemize}
 \item A las columans categóricas se le acplica one-hot encoding utilizando la función  OneHotEncoder de la libreria sklearn.preprocessing, para la implementación del árbol de decisión
 \item A las columnas numéricas se las mantiene tal como estan, ya que se verifica que ambas pertenecen al intervalo 0-1 (no es necesario escalar)
 \end{itemize}
 
-
-
 \section{Modelos Supervisados}
-\subsection{Árbol de decisión con \texttt{min\_info\_gain}}
 
+\subsection{Partición de la muestra}
+
+Para la implementación de los modelos de prendizaje supervisado, se realizó una partición de la muestra en conjunto de entrenamiento y conjunto de evaluación que considera la temporalidad de los datos, en particular en lo que respecta al orden cronológico de los mismos, de manera de asegurar que para realizar predicción en un determinado momento del tiempo se utilizó información disponible hasta ese momento del tiempo, evitando así la fuga de información (\textit{data leakage}). En particular, se consideraron los partidos jugados hasta el año 2023 como conjunto de entrenamiento y los jugados en 2024 y 2025 como conjunto de evaluación.
+
+\subsection{Feature selection}
+
+Se realiza la selección de los atributos más importantes calculando la información mutua (\textit{mutual information}) entre cada atributo del conjunto de datos y la variable objetivo, con el fin de rankear y seleccionar las características con mayor capacidad predictiva.
+
+La información mutua intenta medir cuánta incertidumbre sobre la clase objetivo se reduce al conocer el valor de cada variable. Un valor de 0 indica independencia total mientrs que valores más altos reflejan una relación de dependencia más fuerte.
+
+Para la codificación de las variables catgóricas se utiliza la función \textit{OrdinalEncoder} que transforma  las categorías en números enteros.
+
+Se decide eliminar los atributos que aportan una ganancia de información inferior a 0.01. Los atributos eliminados son el que indica el día de la semana en que se jugó el partido y la variable indicatriz que indica si fue fin de semana.
+
+
+\subsection{Árbol de decisión con parmámetro \texttt{min\_info\_gain}}
+
+Para la implementación propia del árbol de decisión se implementa la técnica de one hot encoding en el preprocesamiento, de forma de convertir los atributos categóricos en nuevas columnas binarias.
+
+Durante el entrenamiento, el algoritmo construye el árbol de forma recursiva dividiendo los datos en cada nodo según la variable y umbral que maximizan la ganancia de información (basada en la reducción de entropía). Maneja tanto variables numéricas como categóricas. El crecimiento se detiene al alcanzar hojas puras, una profundidad máxima, un número mínimo de muestras o cuando la ganancia cae por debajo de la ganancia mínima de información especificada, asignando en las hojas la clase mayoritaria. En la parte de predicción, se evaluan nuevas observaciones recorriendo la estructura desde la raíz hasta la hoja correspondiente para retornar la clase predicha.
 
 \subsection{Naive Bayes con parámetro $m$}
 
