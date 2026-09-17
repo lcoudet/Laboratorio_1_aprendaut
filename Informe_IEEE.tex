@@ -11,7 +11,14 @@
 \usepackage{url}
 \usepackage{multirow}
 \usepackage{xcolor}
-
+\usepackage{hyperref}
+% Configuración opcional para personalizar el color del enlace:
+\hypersetup{
+	colorlinks=true,
+	linkcolor=blue,
+	filecolor=magenta,      
+	urlcolor=blue,
+}
 
 \begin{document}
 
@@ -26,9 +33,7 @@ Montevideo, Uruguay}}
 
 \begin{abstract}
 Se aborda la predicción del resultado de partidos del fútbol uruguayo según gane el cuadro local, el cuadro visitante, o haya empate, a partir del conjunto de datos de David Schoch, restringido a los años 1932--2025. Se construye un pipeline reproducible de preprocesamiento y \emph{feature engineering} temporal y causal. Se
-implementan un árbol de decisión con el hiperparámetro
-\texttt{min\_info\_gain} y un clasificador Naive Bayes con m, tamaño equivalente de muestra. Asimismo, se implementa un clasificador base que prediga que gana el equipo que tiene mayor proporcion de partidos ganados en los últimos 10 años. Se
-comparan los resultados obtenidos con los de Random Forest y Naive Bayes de scikit-learn. Como resultado se obtiene que \textcolor{red}{PONER RESULTADOS PARTE 2}. Luego se realiza un ajuste con técnicas de validación cruzada y ajuste de hiperparámetros y se compara el desempeño de todos los clasificadores implementados. Teniendo en cuenta las medidas de precisión, recall, F1 por clase, accuracy y macro F1 se concluye que \textcolor{red}{PONER CONCLUSION ACA}
+implementa de manera manual un Árbol de decisión y un clasificador Naive Bayes. Asimismo, se implementa un clasificador base que prediga que gana el equipo que tiene mayor proporcion de partidos ganados en los últimos 10 años. Se comparan los resultados obtenidos con los de los clasificadores de la librería scikit-learn de python, incluyendo también el método de Random Forest. Se obtiene que en términos de accuracy el clasificador de Naive Bayes de la librería scikit-learn tiene el mejor desempeño. Luego se realiza un ajuste con técnicas de validación cruzada para el ajuste de hiperparámetros y se compara el desempeño de todos los clasificadores implementados. Se computan las medidas de accuracy, recall, F1 por clase, y macro F1. En términos de accuracy se concluye que Random Forest tiene el mejor desempeño predictivo, mientras que según el inidicador macro F1 la implementación Naive Bayes manual lo tiene. El modelo con menor desempeño en ambas medidas es la implamentación manual del Árbol de decisión seguido por la implementación de scikit learn del mismo.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -38,23 +43,14 @@ aprendizaje supervisado, fútbol, árbol de decisión, Naive Bayes, series tempo
 \section{Introducción}
 Predecir el resultado de un partido de fútbol es un problema clásico de
 clasificación multiclase con tres salidas: gana el local (\texttt{L}), hay empate
-(\texttt{E}) o gana el visitante (\texttt{V}). El fútbol posee una fuerte
-componente aleatoria, por lo que incluso modelos informados rara vez superan de
-forma amplia a heurísticas simples. En este trabajo se utiliza el conjunto de
+(\texttt{E}) o gana el visitante (\texttt{V}). El fútbol posee un fuerte
+componente aleatorio, por lo que incluso modelos complejos muchas veces no logran superar las reglas más sencillas o intuitivas. En este trabajo se utiliza el conjunto de
 datos público de resultados de ligas de David Schoch~\cite{schoch}, restringido
 a los partidos del fútbol uruguayo entre 1932 y 2025 (15.207 registros).
 
-Dicho conjunto contiene información sobre:
-\begin{itemize}
-	\item home: nombre del cuadro local
-	\item away: nombre del cuadro visitante
-	\item date: fecha del partido
-	\item gh: número de goles del cuadro local
-	\item ga: número de goles del cuadro visitante
-	\item full time: indica si el partido terminó a los 90 minutos, si hubo tiempo extra, o si huvo penales
-\end{itemize}
+Dicho conjunto contiene información sobre el nombre del cuadro local, el nombre del cuadro visitante, la fecha en que se jugó el partido, el número de goles del cuadro local, el número de goles del cuadro visitante, y un atributo que indica si el partido terminó a los 90 minutos, si hubo tiempo extra, o si huvo penales (\textit{full time}).
 
-Asimismo, el conjunto de datos contiene información sobre el identificador, país, código, y continente del cuadro local y del cuadro visitante, y el continente donde se realizó la competición. 
+También contiene información como ser el identificador, país, código, y continente del cuadro local y del cuadro visitante, y el continente donde se realizó la competición. 
 
 Los objetivos son: (i) construir un pipeline reproducible de preprocesamiento;
 (ii) implementar clasificadores supervisados, incluyendo dos algoritmos propios;
@@ -62,51 +58,52 @@ y (iii) evaluar el desempeño con un protocolo temporal riguroso que evite fugas
 
 \section{Preprocesamiento}
 
-El preprocesamiento implementado consiste en la realización de la limpieza de los datos y de la transformación a un formato aceptable para los algorimos a utilizar.
+El preprocesamiento implementado consiste en la realización de la limpieza de los datos y de la transformación de los mismos a un formato aceptable para los algorimos a utilizar.
 
 En lo que respecta a la limpieza, se verifica que las columnas no tienen errores y que no hay valores faltantes en ningún atributo. Asimismo, se eliminan filas duplicadas. También se verifica que los años de las fechas de los partidos se encuentran dentro del rango esperado: 1932-2025.
 
-En lo que respecta a la transformación de los datos, se definieron los tipos de atributos (numéricos, categóricos, fechas) y se eliminaron los atributos constantes que no aportan información al algoritmo (home country, away country, home code, away code, home continent, away continent, continent, level).
+En lo que respecta a la transformación de los datos, se definieron los tipos de atributos (numéricos, categóricos, fechas) y se eliminaron los atributos constantes que no aportan información a los algoritmos: país, código, y continente del cuadro local y del cuadro visitante, identificador del cuadro local y del cuadro visitante, y el continente donde se realizó la competición.
 
-Para evitar la fuga de información (\textit{data leakage}), se elimina el atributo \textit{full time} ya que contiene información que no es posible conocer antes de que el partido termine. Introduce una correlación con el resultado del tiempo regular, ya que para que exista tiempo extra o panales es necesario que el resultado en tiempo regular haya sido empate. Incluir esta variable le otorga al algoritmo una pista directa del desarrollo del encuentro que invalida su capacidad predictiva real para futuros partidos. En la medida que es información que no se tiene a priori, no sería posible utilizar el modelo para predecir nuevos resultados si se mantuviera en el conjunto de entrenamiento.
+Para evitar la fuga de información (\textit{data leakage}), se elimina el atributo \textit{full time} ya que contiene información que no es posible conocer antes de que el partido termine. Introduce una correlación con el resultado del tiempo regular, ya que para que exista tiempo extra o panales es necesario que el resultado en tiempo regular haya sido empate. Incluir esta variable le otorga al algoritmo una pista directa del desarrollo del encuentro que invalida su capacidad predictiva real para futuros partidos. En la medida que es información que no se tiene a priori, no sería posible utilizar el modelo para predecir nuevos resultados si se mantuviera este atributo en el conjunto de entrenamiento.
 
 En lo que respecta a la creación de nuevos atributos, se crearon a partir del atributo "fecha": el año, el mes, y el dia de la semana en el que se llevó a cabo el partido, y una variable indicatriz que indica si fue realizado un fin de semana.
 
-También se creó el atributo "tasa de victorias local" y "tasa de victoria visitante" que indica la tasa de victorias del cuadro local y visitante respectivamente, considerando una ventana móvil de los últimos 5 años, y la diferencia entre ellas.
+También se creó el atributo "tasa de victorias local" y "tasa de victoria visitante" que indica la tasa de victorias del cuadro local y visitante respectivamente, considerando una ventana móvil de los últimos 5 partidos, y la diferencia entre ellas.
 
-Finalmente se crea el atributo objetivo \texttt{resultado} comparando los goles de local y visitante y siendo los posibles resultados: gana el cuadro local, gana el cuadro visitante, o hay empate.
+Finalmente se crea el atributo objetivo \texttt{resultado} comparando los goles del cuadro local y los goles del cuadro visitante, siendo los posibles resultados: gana el cuadro local (L), gana el cuadro visitante (V), o hay empate (E).
 
-Una vez creados los nuevos atributos definidos anteriormente y realizada la limpieza mencionada, se realiza la transformación de los datos según tipo de columna:
+Una vez creados los nuevos atributos definidos anteriormente y realizada la limpieza mencionada, se realiza una serie de transformaciones a los datos según el tipo de columna y el algoritmo en que será utilizado:
 
 \begin{itemize}
-\item A las columans categóricas se le acplica one-hot encoding utilizando la función  OneHotEncoder de la libreria sklearn.preprocessing, para la implementación del árbol de decisión
-\item A las columnas numéricas se las mantiene tal como estan, ya que se verifica que ambas pertenecen al intervalo 0-1 (no es necesario escalar)
+\item Para la implementación del Árbol de decisión y de Random Forest, a las columnas categóricas se le acplica one-hot encoding utilizando la función  OneHotEncoder de la libreria scikit learn. A las columnas numéricas se las mantiene tal como estan, ya que se verifica que ambas pertenecen al intervalo 0-1 (no es necesario escalar)
+\item Para la implementación del método de Naive Bayes, a las columnas numéricas se las convierte en categóricas mientras que las categóricas se transforman en valores numéricos enteros utilizando la función OrdinalEncoder de scikit learn. Esto es necesario ya que el método Naive Bayes Categórico asume que los datos provienen de variables discretas (categorías fijas) para contar frecuencias absolutas y calcular las probabilidades condicionales.
 \end{itemize}
 
 \section{Modelos Supervisados}
 
 \subsection{Partición de la muestra}
 
-Para la implementación de los modelos de prendizaje supervisado, se realizó una partición de la muestra en conjunto de entrenamiento y conjunto de evaluación que considera la temporalidad de los datos, en particular en lo que respecta al orden cronológico de los mismos, de manera de asegurar que para realizar predicción en un determinado momento del tiempo se utilizó información disponible hasta ese momento del tiempo, evitando así la fuga de información (\textit{data leakage}). En particular, se consideraron los partidos jugados hasta el año 2023 como conjunto de entrenamiento y los jugados en 2024 y 2025 como conjunto de evaluación.
+Para la implementación de los modelos de aprendizaje supervisado, se realizó una partición de la muestra en conjunto de entrenamiento y conjunto de evaluación que considera la temporalidad de los datos, en particular en lo que respecta al orden cronológico de los mismos, de manera de asegurar que para realizar predicción en un determinado momento del tiempo se utilizó información disponible solamente hasta ese momento del tiempo, evitando así la fuga de información (\textit{data leakage}). De esta manera, se consideraron los partidos jugados hasta el año 2023 inclusive como conjunto de entrenamiento y los jugados en 2024 y 2025 como conjunto de evaluación.
 
 \subsection{Feature selection}
 
-Se realiza la selección de los atributos más importantes calculando la información mutua (\textit{mutual information}) entre cada atributo del conjunto de datos y la variable objetivo, con el fin de rankear y seleccionar las características con mayor capacidad predictiva.
+Con el fin de seleccionar las caracteristicas con mayor capacidad predictiva, se realiza la selección de los atributos más importantes calculando la información mutua (\textit{mutual information}) entre cada atributo del conjunto de datos y la variable objetivo.
 
-La información mutua intenta medir cuánta incertidumbre sobre la clase objetivo se reduce al conocer el valor de cada variable. Un valor de 0 indica independencia total mientrs que valores más altos reflejan una relación de dependencia más fuerte.
+La información mutua intenta medir cuánta incertidumbre sobre la clase objetivo se reduce al conocer el valor de cada variable. Un valor de 0 indica independencia total mientras que valores más altos reflejan una relación de dependencia más fuerte.
 
-Para la codificación de las variables catgóricas se utiliza la función \textit{OrdinalEncoder} que transforma  las categorías en números enteros.
+Para la codificación de las variables categóricas se utiliza la función \textit{OrdinalEncoder} que transforma las categorías en números enteros.
 
-Se decide eliminar los atributos que aportan una ganancia de información inferior a 0.01. Los atributos eliminados son el que indica el día de la semana en que se jugó el partido y la variable indicatriz que indica si fue fin de semana.
+Se decide eliminar los atributos que aportan una ganancia de información inferior a 0.01. Estos fueron el atributo que indica el día de la semana en que se jugó el partido y la variable indicatriz que indica si fue fin de semana o no.
 
+\subsection{Árbol de decisión manual}
 
-\subsection{Árbol de decisión con parmámetro \texttt{min\_info\_gain} - Manual}
+Para la implementación propia del árbol de decisión con ganancia mínima de información se implementa la técnica de one hot encoding en el preprocesamiento, de forma de convertir los atributos categóricos en nuevas columnas binarias.
 
-Para la implementación propia del árbol de decisión se implementa la técnica de one hot encoding en el preprocesamiento, de forma de convertir los atributos categóricos en nuevas columnas binarias.
+Durante el entrenamiento, el algoritmo construye el árbol de forma recursiva dividiendo los datos en cada nodo según la variable y umbral que maximizan la ganancia de información (basada en la reducción de entropía). Maneja tanto variables numéricas como categóricas. El crecimiento se detiene al alcanzar una profundidad máximas o cuando la ganancia cae por debajo de la ganancia mínima de información especificada, asignando en las hojas la clase mayoritaria. En este caso, se le especificó una ganancia mínima de información de 0.01 y no se limitó a una profundidad máxima.
 
-Durante el entrenamiento, el algoritmo construye el árbol de forma recursiva dividiendo los datos en cada nodo según la variable y umbral que maximizan la ganancia de información (basada en la reducción de entropía). Maneja tanto variables numéricas como categóricas. El crecimiento se detiene al alcanzar hojas puras, una profundidad máxima, un número mínimo de muestras o cuando la ganancia cae por debajo de la ganancia mínima de información especificada, asignando en las hojas la clase mayoritaria. En la parte de predicción, se evaluan nuevas observaciones recorriendo la estructura desde la raíz hasta la hoja correspondiente para retornar la clase predicha.
+En la parte de predicción, se evaluan nuevas observaciones recorriendo la estructura desde la raíz hasta la hoja correspondiente para retornar la clase predicha.
 
-A continuaciòn se presenta la matriz de confusión obtenida habiendo especificado en el algoritmo una ganancia de información mínima de 0.01:
+A continuación se presenta la matriz de confusión obtenida:
 
 \begin{figure}[htbp]
 	\centering
@@ -115,18 +112,18 @@ A continuaciòn se presenta la matriz de confusión obtenida habiendo especifica
 	\label{fig:mi_grafico}
 \end{figure}
 
-\subsection{Árbol de decisión - Scikit Learn}
+\subsection{Árbol de decisión de scikit learn}
 
-Se realizó la implementación del árbol de decisión mediante el clasificador de Scikit Learn \textit{DecisionTreeClassifier}, con los siguientes parámetros: \textit{min impurity decrease = 0.001}, \textit{max depth = None}, \textit{criterion = Entropy}, \textit{min samples leaf = 100}.
+Por otro lado, se realizó la implementación del árbol de decisión mediante el clasificador de Scikit Learn \textit{DecisionTreeClassifier}, con los siguientes parámetros: \textit{min impurity decrease = 0.001}, \textit{max depth = None}, \textit{criterion = Entropy}, \textit{min samples leaf = 100}. 
 
-\begin{figure}[htbp]
-	\centering
-	\includegraphics[width=0.3\textwidth]{graficos/cm_arbol_scikit.png}
-	\caption{Matriz de confusión del Árbol de Decisión Scikit Learn}
-	\label{fig:mi_grafico 1}
-\end{figure}
+%\begin{figure}[htbp]
+%	\centering
+	%\includegraphics[width=0.3\textwidth]{grafico%s/cm_arbol_scikit.png}
+	%\caption{Matriz de confusión del Árbol de %Decisión Scikit Learn}
+	%\label{fig:mi_grafico 1}
+%\end{figure}
 
-Se verifica que la clase 2 "Hay empate" tiene precision y recall 0. Esto puede deberse a:
+Observando la matriz de confusión se verificó que la clase "Hay empate" tiene precision y recall 0. Esto puede deberse a:
 
 \begin{itemize}
 	\item Desbalance severo de clases: La clase con 0 accuracy representa un porcentaje muy pequeño del conjunto de datos y el árbol la ignora para maximizar el accuracy global.
@@ -139,15 +136,15 @@ Se propone balancear el peso de las clases utilizando el argumento \textit{class
 \begin{figure}[htbp]
 	\centering
 	\includegraphics[width=0.3\textwidth]{graficos/cm_arbol_scikit2.png}
-	\caption{Matriz de confusión del Árbol de Decisión Scikit Learn 2}
+	\caption{Matriz de confusión del Árbol de Decisión Scikit Learn balanceado}
 	\label{fig:mi_grafico 2}
 \end{figure}
 
-\subsection{Naive Bayes con parámetro $m$ - Manual}
+\newpage
 
-Se implementa de manera manual un clasificador Naive Bayes Categórico compatible con Scikit-Learn. En el entrenamiento, calcula las probabilidades a priori de las clases y las condicionales utilizando el m-estimador para suavizar probabilidades de valores ausentes o sin frecuencia. En el predict, suma los logaritmos de estas probabilidades por fila para seleccionar la clase con mayor valor acumulado. Por último, entrena el modelo con parámetro m=1 y evalúa sus predicciones imprimiendo la métrica de Accuracy y el Classification Report.
+\subsection{Naive Bayes manual}
 
-A continuación se presenta la matriz de confusión obtenida:
+Se implementa de manera manual un clasificador Naive Bayes Categórico compatible con el de scikit-learn. En el entrenamiento, calcula las probabilidades a priori de las clases y las condicionales utilizando el m-estimador para suavizar probabilidades de valores ausentes o sin frecuencia. En el predict, suma los logaritmos de estas probabilidades por fila para seleccionar la clase con mayor valor acumulado. Por último, entrena el modelo con parámetro m=1 y se evalúan sus predicciones imprimiendo la métrica de Accuracy y el Classification Report. A continuación se presenta la matriz de confusión obtenida:
 
 \begin{figure}[htbp]
 	\centering
@@ -156,11 +153,9 @@ A continuación se presenta la matriz de confusión obtenida:
 	\label{fig:mi_grafico 3}
 \end{figure}
 
-\subsection{Naive Bayes con parámetro $m$ - Scikit Learn}
+\subsection{Naive Bayes scikit learn}
 
-También se implemento el ajuste utilizando el clasificador de la librería Scikit Learn \textit{CategoricalNB} con parámetros \textit{alpha=1} y \textit{fit prior = True}.
-
-LA matriz de confusión obtenida fue la siguiente:
+También se implemento el ajuste utilizando el clasificador de la librería Scikit Learn \textit{CategoricalNB} con parámetros \textit{alpha=1} y \textit{fit prior = True}. La matriz de confusión obtenida fue la siguiente:
 
 \begin{figure}[htbp]
 	\centering
@@ -169,21 +164,20 @@ LA matriz de confusión obtenida fue la siguiente:
 	\label{fig:mi_grafico 4}
 \end{figure}
 
+\newpage
 
 \subsection{Clasificador base}
 
-Se implementó un clasificador base que en el entrenamient , identifica la clase mayoritaria global y calcula la tasa histórica de victorias de cada equipo considerando únicamente los últimos 10 años. En el predict, compara la tasa de victorias del equipo local contra el visitante: predice local (L) o visitante (V) según cuál tenga mayor tasa, y asigna la clase mayoritaria en caso de empate o falta de datos. Finalmente, ajusta el modelo con los datos de entrenamiento y evalúa sus predicciones en el conjunto de prueba imprimiendo Accuracy y Classification Report.
+Se implementó un clasificador base que en el entrenamiento, identifica la clase mayoritaria global y calcula la tasa histórica de victorias de cada equipo considerando únicamente los últimos 10 años. En el predict, compara la tasa de victorias del equipo local contra el visitante: predice local (L) o visitante (V) según cuál tenga mayor tasa, y asigna la clase mayoritaria en caso de empate o falta de datos. Finalmente, ajusta el modelo con los datos de entrenamiento y evalúa sus predicciones en el conjunto de prueba imprimiendo la medida de Accuracy y Classification Report. En este caso también se observa que la clase "Hay empate" tiene precision y recall 0.
 
-A continuación se presenta la matriz de confusión obtenida:
+%\begin{figure}[htbp]
+%	\centering
+%	\includegraphics[width=0.3\textwidth]{graficos/cm_cb_manual.png}
+%	\caption{Matriz de confusión del ajuste Naive Bayes Scikit Learn}
+%	\label{fig:mi_grafico 5}
+%\end{figure}
 
-\begin{figure}[htbp]
-	\centering
-	\includegraphics[width=0.3\textwidth]{graficos/cm_cb_manual.png}
-	\caption{Matriz de confusión del ajuste Naive Bayes Scikit Learn}
-	\label{fig:mi_grafico 5}
-\end{figure}
-
-\subsection{Random Forest - Scikit Learn}
+\subsection{Random Forest scikit learn}
 
 Por último, se realizó un ajuste mediante el método de Random Forest utilizando el clasificador de Scikit Learn \textit{RanfomForestClassifier} con parámetros n estimators=300,
 max depth=None, min samples leaf=10, max features="sqrt",
@@ -200,7 +194,7 @@ Se obtuvo la siguiente matriz de confusión:
 
 \subsection{Comparación de modelos}
 
-A modo de resumen, se presenta el gráfico con el accuracy obtenido en cada uno de los métodos comentados en las subsecciones anteriores. Como puede observarse, el Clasificador Base es el que tiene un valor mayor para esta medida, mientras que el Árbol de Decisión de Scikit Learn el menor.
+Si bien es necesario tener en cuenta todas las medidas de bondad de ajuste para realizar la comparativa de modelos, a modo de resumen se presenta el gráfico con el accuracy obtenido en cada uno de los métodos comentados en las subsecciones anteriores. Como puede observarse, el Clasificador Base es el que tiene el mejor desempeño en términos de esta medida, mientras que el Árbol de Decisión de scikit learn el peor. No obstante si comparamos con otras medidas los resultados pueden diferir.
 
 \begin{figure}[htbp]
 	\centering
@@ -212,26 +206,49 @@ A modo de resumen, se presenta el gráfico con el accuracy obtenido en cada uno 
 
 \section{Experimentación}
 
-En la etapa de experimentación, se definió un pipeline de preprocesamiento para cada modelo según los atributos a utilizar en cada algoritmo y las transformaciones específicas.
+En la etapa de experimentación, se definió un pipeline de preprocesamiento para cada modelo según los atributos a utilizar en cada algoritmo y las transformaciones específicas necesarias en cada uno de ellos.
 
 \subsection{Tratamiento de la temporalidad}
 
-Sobre el conjunto de entrenamiento definido anteriormente, que contiene información de los partidos jugados hasta el año 2023 inclusive,  se definió función de validación cruzada con ventanas móviles de 1 año, las cuales definen los grupos utilizados para validar. Se definieron 5 grupos de 1 año cada uno usando los datos hasta 2019, y para cada uno de ellos se entrena con los datos de los partidos jugados en fechas anteriores. 
+Sobre el conjunto de entrenamiento definido anteriormente, que contiene información de los partidos jugados hasta el año 2023 inclusive,  se definió función de validación cruzada con ventanas móviles de 1 año, las cuales definen los grupos utilizados para validar. Se definieron 5 grupos de 1 año cada uno usando los datos hasta 2019, y para cada uno de ellos se entrenan los modelos con los datos de los partidos jugados en fechas anteriores. 
 
 Asegurarse de no utilizar datos futuros para predecir datos pasados es un aspecto importante en el tratamiento de la temporalidad en los modelos de aprendizaje supervisado, ya que evita el sesgo prospectivo. La utilización del método de validación cruzada tradicional (k-folds) que mezcla observaciones al azar no es adecuado para datos de este tipo.
 
 \subsection{Ajuste de hiperparámetros}
 
-En lo que respecta al ajuste de hiperparámetros, se definió una grilla de valores para cada hiperparámetro de cada algoritmo. Una ve obtenidos los mejores hiperparámetros, se reentrenó cada modelo sobre todo el conjunto de entrenamiento.
+Se definió una grilla de valores para cada hiperparámetro de cada algoritmo y se observó la evolución del error en el conjunto de validación. Se seleccionaron como mejores hiperparámetros los que minimizan dicho error.
 
-Finalmenre, se evalua sobre el conjunto de prueba cada modelo con los valores de los hiperparámetros que mejor ajustaron en la parte anterior y se comparan las métricas precisión, recall, F1 por clase, accuracy y macro-F1.
+Una vez obtenidos los mejores hiperparámetros, se reentrenó cada modelo sobre todo el conjunto de entrenamiento.
+
+Finalmente, se realizó la evaluación de cada modelo sobre el conjunto de prueba y se compararon las métricas accuracy, recall, F1 por clase, y macro-F1.
 
 \subsection{Resultados en evaluación}
 
+Luego de realizar el proceso de experimentación y obtener los mejores hiperparámetros, dentro de los especificados en cada grilla propuesta, se reentrenan los modelos sobre todo el conjunto de entrenamiento y se evalua sobre el conjunto de prueba.
 
+Se computan las métricas accuracy, recall, macro F1, y F1 por clase.
+A modo de resumen, a continuación se presenta la tabla de resultados con las valores del accuracy obtenido y macro F1:
 
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=0.5\textwidth]{graficos/resultados_exp.png}
+	\caption{Tabla de resultados en evaluación}
+	\label{fig:mi_grafico 8}
+\end{figure}
+
+La tabla presenta una comparativa de desempeño entre los seis modelos de clasificación evaluados. En términos de acierto global, Random Forest encabeza los resultados con un Accuracy de 0.48093, superando al resto de los enfoques. Sin embargo, al observar la métrica Macro F1-Score, el modelo Naive Bayes manual obtiene el valor más alto con 0.37094, seguido muy de cerca por CategoricalNB con 0.36922, lo que sugiere un mejor equilibrio al predecir clases menos frecuentes como los empates. Por su parte, el Clasificador base - histórico 10 años logra un rendimiento notablemente competitivo, situándose en el segundo puesto de Accuracy con 0.46822 y manteniendo un Macro F1 de 0.36128, superando tanto a los árboles individuales como a las variantes de Naive Bayes en tasa total de aciertos. Finalmente, la comparativa evidencia una alta consistencia entre las implementaciones nativas y las desarrolladas manualmente: la versión propia de Naive Bayes registra métricas casi idénticas a las de CategoricalNB, mientras que el Árbol sklearn (0.45763 en Accuracy y 0.34763 en Macro F1) exhibe un comportamiento prácticamente equivalente al Árbol manual (0.45551 y 0.34613, respectivamente), quedando ambos modelos basados en un único árbol en los últimos lugares de desempeño.
 
 \section{Conclusiones}
+
+En este trabajo se abordó la predicción de resultados del fútbol uruguayo bajo un esquema temporal riguroso que previno la fuga de información mediante el uso de validación cruzada con ventanas móviles. Los resultados confirman la elevada naturaleza estocástica del deporte, donde modelos más complejos rara vez superan de forma amplia a heurísticas simples. 
+
+A través de la experimentación se demostró que Random Forest obtuvo la mayor precisión global (Accuracy de 0.4809), mientras que las variantes de Naive Bayes alcanzaron un mejor desempeño balanceado entre clases (Macro F1 superior a 0.3700) al capturar de forma más equitativa categorías complejas como los empates. Resulta destacable la competitividad del Clasificador Base basado en el histórico de 10 años, el cual superó en precisión a los modelos de árboles individuales y a Naive Bayes, validando el peso de la historia reciente de los equipos como predictor directo.
+
+Asimismo, se verificó la correcta construcción de los algoritmos propios: tanto las implementaciones manuales del Árbol de Decisión como de Naive Bayes exhibieron un comportamiento prácticamente idéntico a sus equivalentes de la librería scikit-learn. 
+
+Todo el desarrollo de este trabajo, incluyendo el código de las implementaciones manuales, el preprocesamiento y el análisis de resultados, se encuentra disponible de forma pública y reproducible en el siguiente \href{https://github.com/lcoudet/Laboratorio_1_aprendaut}{repositorio de GitHub}
+
+Como líneas de trabajo futuro, se propone incorporar características dinámicas adicionales (como métricas avanzadas de xG o lesiones) y explorar técnicas de ensamblado o remuestreo para mitigar de forma más efectiva el desbalance intrínseco de la clase empate.
 
 
 
