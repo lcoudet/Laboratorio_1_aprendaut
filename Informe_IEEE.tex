@@ -12,6 +12,7 @@
 \usepackage{multirow}
 \usepackage{xcolor}
 
+
 \begin{document}
 
 \title{Predicción de resultados del fútbol uruguayo mediante aprendizaje supervisado}
@@ -99,35 +100,131 @@ Para la codificación de las variables catgóricas se utiliza la función \texti
 Se decide eliminar los atributos que aportan una ganancia de información inferior a 0.01. Los atributos eliminados son el que indica el día de la semana en que se jugó el partido y la variable indicatriz que indica si fue fin de semana.
 
 
-\subsection{Árbol de decisión con parmámetro \texttt{min\_info\_gain}}
+\subsection{Árbol de decisión con parmámetro \texttt{min\_info\_gain} - Manual}
 
 Para la implementación propia del árbol de decisión se implementa la técnica de one hot encoding en el preprocesamiento, de forma de convertir los atributos categóricos en nuevas columnas binarias.
 
 Durante el entrenamiento, el algoritmo construye el árbol de forma recursiva dividiendo los datos en cada nodo según la variable y umbral que maximizan la ganancia de información (basada en la reducción de entropía). Maneja tanto variables numéricas como categóricas. El crecimiento se detiene al alcanzar hojas puras, una profundidad máxima, un número mínimo de muestras o cuando la ganancia cae por debajo de la ganancia mínima de información especificada, asignando en las hojas la clase mayoritaria. En la parte de predicción, se evaluan nuevas observaciones recorriendo la estructura desde la raíz hasta la hoja correspondiente para retornar la clase predicha.
 
-\subsection{Naive Bayes con parámetro $m$}
+A continuaciòn se presenta la matriz de confusión obtenida habiendo especificado en el algoritmo una ganancia de información mínima de 0.01:
 
-\begin{equation}
-P(c) = \frac{N_c + m\,p}{N + m}, \qquad p = \frac{1}{K},
-\end{equation}
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=0.3\textwidth]{graficos/cm_arbol_manual.png}
+	\caption{Matriz de confusión del Árbol de Decisión manual}
+	\label{fig:mi_grafico}
+\end{figure}
 
-donde $N_c$ es el número de ejemplos de la clase $c$, $N$ el total, $K$ el número
-de clases y $p$ el \emph{prior} uniforme. La verosimilitud de cada atributo se
-modela con una gaussiana por clase, con un pequeño suavizado de varianza.
+\subsection{Árbol de decisión - Scikit Learn}
+
+Se realizó la implementación del árbol de decisión mediante el clasificador de Scikit Learn \textit{DecisionTreeClassifier}, con los siguientes parámetros: \textit{min impurity decrease = 0.001}, \textit{max depth = None}, \textit{criterion = Entropy}, \textit{min samples leaf = 100}.
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=0.3\textwidth]{graficos/cm_arbol_scikit.png}
+	\caption{Matriz de confusión del Árbol de Decisión Scikit Learn}
+	\label{fig:mi_grafico 1}
+\end{figure}
+
+Se verifica que la clase 2 "Hay empate" tiene precision y recall 0. Esto puede deberse a:
+
+\begin{itemize}
+	\item Desbalance severo de clases: La clase con 0 accuracy representa un porcentaje muy pequeño del conjunto de datos y el árbol la ignora para maximizar el accuracy global.
+	\item El árbol está sobreajustado o simplificado en exceso
+	\item Métrica de optimización incorrecta por utilizar el accuracy como criterio de optimización, el cual prioriza a las clases con más muestras.
+\end{itemize}
+
+Se propone balancear el peso de las clases utilizando el argumento \textit{class weight='balanced'}, esto le da más importancia (penalización) a los errores cometidos en las clases con menos muestras. A continuación se presenta la matriz de confusión obtenida en este ajuste:
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=0.3\textwidth]{graficos/cm_arbol_scikit2.png}
+	\caption{Matriz de confusión del Árbol de Decisión Scikit Learn 2}
+	\label{fig:mi_grafico 2}
+\end{figure}
+
+\subsection{Naive Bayes con parámetro $m$ - Manual}
+
+Se implementa de manera manual un clasificador Naive Bayes Categórico compatible con Scikit-Learn. En el entrenamiento, calcula las probabilidades a priori de las clases y las condicionales utilizando el m-estimador para suavizar probabilidades de valores ausentes o sin frecuencia. En el predict, suma los logaritmos de estas probabilidades por fila para seleccionar la clase con mayor valor acumulado. Por último, entrena el modelo con parámetro m=1 y evalúa sus predicciones imprimiendo la métrica de Accuracy y el Classification Report.
+
+A continuación se presenta la matriz de confusión obtenida:
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=0.3\textwidth]{graficos/cm_nb_manual.png}
+	\caption{Matriz de confusión del ajuste Naive Bayes manual}
+	\label{fig:mi_grafico 3}
+\end{figure}
+
+\subsection{Naive Bayes con parámetro $m$ - Scikit Learn}
+
+También se implemento el ajuste utilizando el clasificador de la librería Scikit Learn \textit{CategoricalNB} con parámetros \textit{alpha=1} y \textit{fit prior = True}.
+
+LA matriz de confusión obtenida fue la siguiente:
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=0.3\textwidth]{graficos/cm_nb_scikit.png}
+	\caption{Matriz de confusión del ajuste Naive Bayes Scikit Learn}
+	\label{fig:mi_grafico 4}
+\end{figure}
+
 
 \subsection{Clasificador base}
 
-\section{Experimentación}
-\subsection{Protocolo temporal}
+Se implementó un clasificador base que en el entrenamient , identifica la clase mayoritaria global y calcula la tasa histórica de victorias de cada equipo considerando únicamente los últimos 10 años. En el predict, compara la tasa de victorias del equipo local contra el visitante: predice local (L) o visitante (V) según cuál tenga mayor tasa, y asigna la clase mayoritaria en caso de empate o falta de datos. Finalmente, ajusta el modelo con los datos de entrenamiento y evalúa sus predicciones en el conjunto de prueba imprimiendo Accuracy y Classification Report.
 
-Se entrena con los partidos hasta 2023 inclusive (14.721 ejemplos) y se evalúa
-sobre 2024--2025 (472 ejemplos). Por tratarse de datos temporales, la validación
-cruzada usa \texttt{TimeSeriesSplit} (cinco cortes), que entrena siempre con el
-pasado y valida con el futuro inmediato, sin barajar. Se fijan las semillas
-aleatorias para garantizar reproducibilidad.
+A continuación se presenta la matriz de confusión obtenida:
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=0.3\textwidth]{graficos/cm_cb_manual.png}
+	\caption{Matriz de confusión del ajuste Naive Bayes Scikit Learn}
+	\label{fig:mi_grafico 5}
+\end{figure}
+
+\subsection{Random Forest - Scikit Learn}
+
+Por último, se realizó un ajuste mediante el método de Random Forest utilizando el clasificador de Scikit Learn \textit{RanfomForestClassifier} con parámetros n estimators=300,
+max depth=None, min samples leaf=10, max features="sqrt",
+random state=42, n jobs=-1. 
+
+Se obtuvo la siguiente matriz de confusión:
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=0.3\textwidth]{graficos/cm_rf_scikit.png}
+	\caption{Matriz de confusión del ajuste Naive Bayes Scikit Learn}
+	\label{fig:mi_grafico 6}
+\end{figure}
+
+\subsection{Comparación de modelos}
+
+A modo de resumen, se presenta el gráfico con el accuracy obtenido en cada uno de los métodos comentados en las subsecciones anteriores. Como puede observarse, el Clasificador Base es el que tiene un valor mayor para esta medida, mientras que el Árbol de Decisión de Scikit Learn el menor.
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=0.5\textwidth]{graficos/comparacion_parte_2.png}
+	\caption{Accuracy de los modelos ajustados}
+	\label{fig:mi_grafico 7}
+\end{figure}
+
+
+\section{Experimentación}
+
+En la etapa de experimentación, se definió un pipeline de preprocesamiento para cada modelo según los atributos a utilizar en cada algoritmo y las transformaciones específicas.
+
+\subsection{Tratamiento de la temporalidad}
+
+Sobre el conjunto de entrenamiento definido anteriormente, que contiene información de los partidos jugados hasta el año 2023 inclusive,  se definió función de validación cruzada con ventanas móviles de 1 año, las cuales definen los grupos utilizados para validar. Se definieron 5 grupos de 1 año cada uno usando los datos hasta 2019, y para cada uno de ellos se entrena con los datos de los partidos jugados en fechas anteriores. 
+
+Asegurarse de no utilizar datos futuros para predecir datos pasados es un aspecto importante en el tratamiento de la temporalidad en los modelos de aprendizaje supervisado, ya que evita el sesgo prospectivo. La utilización del método de validación cruzada tradicional (k-folds) que mezcla observaciones al azar no es adecuado para datos de este tipo.
 
 \subsection{Ajuste de hiperparámetros}
 
+En lo que respecta al ajuste de hiperparámetros, se definió una grilla de valores para cada hiperparámetro de cada algoritmo. Una ve obtenidos los mejores hiperparámetros, se reentrenó cada modelo sobre todo el conjunto de entrenamiento.
+
+Finalmenre, se evalua sobre el conjunto de prueba cada modelo con los valores de los hiperparámetros que mejor ajustaron en la parte anterior y se comparan las métricas precisión, recall, F1 por clase, accuracy y macro-F1.
 
 \subsection{Resultados en evaluación}
 
