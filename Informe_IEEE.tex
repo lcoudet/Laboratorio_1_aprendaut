@@ -232,7 +232,7 @@ Una vez obtenidos los mejores hiperparámetros, dentro de los especificados en c
 
 Finalmente, se realizó la evaluación de cada modelo sobre el conjunto de testeo y se compararon las matrices de confusión y las métricas accuracy, precision, recall, F1 por clase, y macro-F1.
 
-A modo de resumen, a continuación se presenta la tabla de resultados con las valores del accuracy obtenido y macro F1:
+A modo de resumen, a continuación se presenta la tabla de resultados con las valores del Accuracy obtenido y macro F1:
 
 \begin{figure}[htbp]
 	\centering
@@ -241,19 +241,23 @@ A modo de resumen, a continuación se presenta la tabla de resultados con las va
 	\label{fig:mi_grafico 8}
 \end{figure}
 
-La tabla presenta una comparativa de desempeño entre los seis modelos de clasificación evaluados. En términos de acierto global, Random Forest encabeza los resultados con un Accuracy de 0.48093, superando al resto de los enfoques. Sin embargo, al observar la métrica Macro F1-Score, el modelo Naive Bayes manual obtiene el valor más alto con 0.37094, seguido muy de cerca por CategoricalNB con 0.36922, lo que sugiere un mejor equilibrio al predecir clases menos frecuentes como los empates. Por su parte, el Clasificador base - histórico 10 años logra un rendimiento notablemente competitivo, situándose en el segundo puesto de Accuracy con 0.46822 y manteniendo un Macro F1 de 0.36128, superando tanto a los árboles individuales como a las variantes de Naive Bayes en tasa total de aciertos. Finalmente, la comparativa evidencia una alta consistencia entre las implementaciones nativas y las desarrolladas manualmente: la versión propia de Naive Bayes registra métricas casi idénticas a las de CategoricalNB, mientras que el Árbol sklearn (0.45763 en Accuracy y 0.34763 en Macro F1) exhibe un comportamiento prácticamente equivalente al Árbol manual (0.45551 y 0.34613, respectivamente), quedando ambos modelos basados en un único árbol en los últimos lugares de desempeño.
+La tabla presenta una comparativa de desempeño entre los seis modelos de clasificación evaluados. En términos de acierto global, Random Forest encabeza los resultados con un Accuracy de 0.48093, superando al resto de los enfoques. Sin embargo, al observar la métrica Macro F1-Score, el modelo Naive Bayes manual obtiene el valor más alto con 0.37094, seguido muy de cerca por CategoricalNB con 0.36922, lo que sugiere un mejor equilibrio al predecir clases menos frecuentes como los empates. Por su parte, el Clasificador Base - histórico 10 años logra un rendimiento notablemente competitivo, situándose en el segundo puesto de Accuracy con 0.46822, superando tanto a los árboles individuales como a las variantes de Naive Bayes en tasa total de aciertos, y manteniendo un Macro F1 relativamente competitivo, de 0.36128. Finalmente, la comparativa evidencia una alta consistencia entre las implementaciones nativas y las desarrolladas manualmente: la versión propia de Naive Bayes registra métricas casi idénticas a las de CategoricalNB, mientras que el Árbol sklearn (0.45763 en Accuracy y 0.34763 en Macro F1) exhibe un comportamiento prácticamente equivalente al Árbol manual (0.45551 y 0.34613, respectivamente), quedando ambos modelos basados en un único árbol en los últimos lugares de desempeño.
 
 \section{Conclusiones}
 
 En este trabajo se abordó la predicción de resultados del fútbol uruguayo bajo un esquema temporal riguroso que previno la fuga de información mediante el uso de validación cruzada con ventanas móviles. Los resultados confirman la elevada naturaleza estocástica del deporte, donde modelos más complejos rara vez superan de forma amplia a heurísticas simples. 
 
-A través de la experimentación se demostró que Random Forest obtuvo la mayor precisión global (Accuracy de 0.4809), mientras que las variantes de Naive Bayes alcanzaron un mejor desempeño balanceado entre clases (Macro F1 superior a 0.3700) al capturar de forma más equitativa categorías complejas como los empates. Resulta destacable la competitividad del Clasificador Base basado en el histórico de 10 años, el cual superó en precisión a los modelos de árboles individuales y a Naive Bayes, validando el peso de la historia reciente de los equipos como predictor directo.
+A través de la experimentación se demostró que Random Forest obtuvo la mayor desempeño global (Accuracy de 0.4809), mientras que las variantes de Naive Bayes alcanzaron un mejor desempeño balanceado entre clases (Macro F1 superior a 0.3700) al capturar de forma más equitativa categorías complejas como los empates. Resulta destacable la competitividad del Clasificador Base basado en el histórico de 10 años, el cual superó en capacidad de pronóstico a los modelos de árboles individuales y a Naive Bayes, validando el peso de la historia reciente de los equipos como predictor  directo.
 
 Asimismo, se verificó la correcta construcción de los algoritmos propios: tanto las implementaciones manuales del Árbol de Decisión como de Naive Bayes exhibieron un comportamiento prácticamente idéntico a sus equivalentes de la librería scikit-learn. 
 
 Todo el desarrollo de este trabajo, incluyendo el código de las implementaciones manuales, el preprocesamiento y el análisis de resultados, se encuentra disponible de forma pública y reproducible en el siguiente \href{https://github.com/lcoudet/Laboratorio_1_aprendaut}{repositorio de GitHub}
 
-Como líneas de trabajo futuro, se propone incorporar características dinámicas adicionales (como métricas avanzadas de xG o lesiones) y explorar técnicas de ensamblado o remuestreo para mitigar de forma más efectiva el desbalance intrínseco de la clase empate.
+Como líneas de trabajo futuro, se propone incorporar características dinámicas adicionales (como métricas avanzadas de xG o lesiones) y explorar técnicas de ensamblado o remuestreo para mitigar de forma más efectiva el desbalance intrínseco de la clase ''Empate''.
+
+\section{Uso de Inteligencia Artificial}
+
+Para la realización de este trabajo utilizamos ChatGPT como herramienta de apoyo en la implementación y revisión de código, la resolución de errores y la comprensión de conceptos. Las soluciones propuestas por la herramienta fueron revisadas, entendidas y validadas antes de su incorporación al trabajo.
 
 
 
