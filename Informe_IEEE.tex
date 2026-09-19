@@ -63,7 +63,7 @@ En lo que respecta a la limpieza, se verifica que las columnas no tienen errores
 
 En lo que respecta a la transformación de los datos, se definieron los tipos de atributos (numéricos, categóricos, fechas) y se eliminaron los atributos constantes que no aportan información a los algoritmos: país, código, y continente del cuadro local y del cuadro visitante, y el continente donde se realizó la competición, así como también aquellos atributos que aportan exactamente la misma información que algún otro: identificadores del cuadro local y del cuadro visitante.
 
-Para evitar la fuga de información (\textit{data leakage}), se elimina el atributo \texttt{full\_time}, debido a que contiene información que no es posible conocer antes de que el partido termine. Introduce una correlación con el resultado del tiempo regular, ya que para que exista tiempo extra o panales es necesario que el resultado en tiempo regular haya sido empate. A su vez, conocer que un partido se define por penales permite descartar que el resultado sea "empate". Incluir esta atributo le otorga al algoritmo una pista directa del desarrollo del encuentro que invalida su capacidad predictiva real para futuros partidos, cuando el objetivo es obtener la predicción antes de que comiencen los mismos. En la medida que es información que no se tiene a priori, no sería posible utilizar el modelo para predecir nuevos resultados si se mantuviera este atributo en el conjunto de entrenamiento.
+Para evitar la fuga de información (\textit{data leakage}), se elimina el atributo \texttt{full\_time}, debido a que contiene información que no es posible conocer antes de que el partido termine. Introduce una correlación con el resultado del tiempo regular, ya que para que exista tiempo extra o panales es necesario que el resultado en tiempo regular haya sido empate. A su vez, conocer que un partido se define por penales permite descartar que el resultado sea empate. Incluir esta atributo le otorga al algoritmo una pista directa del desarrollo del encuentro que invalida su capacidad predictiva real para futuros partidos, cuando el objetivo es obtener la predicción antes de que comiencen los mismos. En la medida que es información que no se tiene a priori, no sería posible utilizar el modelo para predecir nuevos resultados si se mantuviera este atributo en el conjunto de entrenamiento.
 
 En cuanto a la creación de nuevos atributos, se generaron a partir del atributo \texttt{fecha}: el año, el mes, y el día de la semana en el que se llevó a cabo el partido, y una atributo indicatriz que señala si fue realizado un fin de semana.
 
@@ -112,7 +112,7 @@ A continuación se presenta la matriz de confusión obtenida:
 	\label{fig:mi_grafico}
 \end{figure}
 
-En la amplia mayoría de casos este modelo predice que gana el equipo local, por eso el recall para eszta categoría es bastante alto y para el resto de ellas es muy bajo. En general, el modelo predijo correctamente el 43\% de las instancias de testeo.
+En la amplia mayoría de casos este modelo predice que gana el equipo local, por eso el recall para esta categoría es bastante alto y para el resto de ellas es muy bajo. En general, el modelo predijo correctamente el 43\% de las instancias de testeo.
 
 \subsection{Árbol de decisión de scikit learn}
 
@@ -170,8 +170,6 @@ También se implementó el ajuste utilizando el clasificador de la librería Sci
 
 La implementación del Naive Bayes con scikit learn predice de forma muy similar a la implementación manual las categorías de respuesta y también cuentan con métricas muy parecidas, prediciendo la implementación con  scikit learn apenas un 1\% mejor que la manual.
 
-\newpage
-
 \subsection{Clasificador base}
 
 Se implementó un clasificador base que en el entrenamiento identifica la clase mayoritaria global y calcula la tasa histórica de victorias de cada equipo considerando únicamente los últimos 10 años. En el predict, compara la tasa de victorias del equipo local contra el visitante: predice local (L) o visitante (V) según cuál tenga mayor tasa, y asigna la clase mayoritaria en caso de empate o falta de datos. Finalmente, ajusta el modelo con los datos de entrenamiento y evalúa sus predicciones en el conjunto de prueba, imprimiendo la medida de Accuracy y Classification Report. En este caso también se observa que la clase "Hay empate" tiene precision y recall 0.
@@ -187,9 +185,7 @@ El modelo balancea mejor sus predicciones entre ''Gana local'' y ''Gana visitant
 
 \subsection{Random Forest scikit learn}
 
-Por último, se realizó un ajuste mediante el método de Random Forest utilizando el clasificador de Scikit Learn \textit{RanfomForestClassifier} con parámetros \textit{n\_estimators=300}, \textit{max\_depth=None}, \textit{min\_samples\_leaf=10}, \textit{max\_features="sqrt"} . 
-
-Se obtuvo la siguiente matriz de confusión:
+Por último, se realizó un ajuste mediante el método de Random Forest utilizando el clasificador de Scikit Learn \textit{RanfomForestClassifier} con parámetros \textit{n\_estimators=300}, \textit{max\_depth=None}, \textit{min\_samples\_leaf=10}, \textit{max\_features="sqrt"} . e obtuvo la siguiente matriz de confusión:
 
 \begin{figure}[htbp]
 	\centering
@@ -202,15 +198,16 @@ De forma similar a alguno de los modelos ya implementados, el Random Forest tien
 
 \subsection{Comparación de modelos}
 
-Si bien es necesario tener en cuenta todas las medidas de bondad de ajuste para realizar la comparativa de modelos, a modo de resumen se presenta el gráfico con el Accuracy obtenido en cada uno de los métodos comentados en las subsecciones anteriores. Como puede observarse, todos los modelos cuentan con valores de Accuracy relativamente cercanos. El Clasificador Base es el que tiene el mejor desempeño en términos de esta medida, mientras que el Árbol de Decisión manual el peor. No obstante si comparamos con otras medidas los resultados pueden diferir.
+Si bien es necesario tener en cuenta todas las medidas de bondad de ajuste para realizar la comparativa de modelos, a modo de resumen se presenta el gráfico con el Accuracy obtenido en cada uno de los métodos comentados en las subsecciones anteriores. 
 
 \begin{figure}[htbp]
 	\centering
-	\includegraphics[width=0.5\textwidth]{graficos/comparacion_parte_2.png}
+	\includegraphics[width=0.4\textwidth]{graficos/comparacion_parte_2.png}
 	\caption{Accuracy de los modelos ajustados}
 	\label{fig:mi_grafico 7}
 \end{figure}
 
+Como puede observarse, todos los modelos cuentan con valores de Accuracy relativamente cercanos. El Clasificador Base es el que tiene el mejor desempeño en términos de esta medida, mientras que el Árbol de Decisión manual el peor. No obstante si comparamos con otras medidas los resultados pueden diferir.
 
 \section{Experimentación}
 
